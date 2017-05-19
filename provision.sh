@@ -12,6 +12,8 @@ xlogin() {
         cd xlogin-git
         makepkg -si --noconfirm
 	VAGRANT
+
+    systemctl set-default -f graphical.target
 }
 
 tor() {
@@ -35,7 +37,7 @@ tor
 # init
 
 install -o vagrant -g vagrant \
-    <(echo 'cd tor-browser_en-US; ./start-tor-browser.desktop; exec openbox-session') \
+    <(echo 'cd tor-browser_en-US; ./start-tor-browser.desktop; xrandr -s 1280x768; exec openbox-session') \
     ~vagrant/.xinitrc
 
 systemctl enable xlogin@vagrant
