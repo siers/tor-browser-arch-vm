@@ -6,6 +6,8 @@ packages() {
     pacman -S --noconfirm xorg xorg-xinit openbox rxvt-unicode \
         git iptables tor
 
+    sed -i 's/#ControlPort/ControlPort/' /etc/tor/torrc
+
     systemctl enable tor
     systemctl start tor
 }
@@ -53,8 +55,10 @@ firewall() {
 
     # tor-browser starts its own tor daemon, but because the process
     # doesn't have the tor uid, it gets proxied
-    iptables -t nat -A OUTPUT -p tcp --dport 9051 -j REDIRECT --to-port 9050
+    iptables -t nat -A OUTPUT -p tcp --dport 9150 -j REDIRECT --to-port 9050
+    iptables -t nat -A OUTPUT -p tcp --dport 9151 -j REDIRECT --to-port 9051
     iptables -A OUTPUT -o lo -p tcp --dport 9050 -j ACCEPT
+    iptables -A OUTPUT -o lo -p tcp --dport 9051 -j ACCEPT
     iptables -A OUTPUT -m owner --uid-owner 43 -j ACCEPT
 
     iptables -P INPUT DROP
