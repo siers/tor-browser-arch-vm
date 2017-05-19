@@ -3,7 +3,11 @@ set -eux
 exec &> >(tee /dev/tty1)
 
 packages() {
-    pacman -S --noconfirm xorg xorg-xinit openbox git rxvt-unicode
+    pacman -S --noconfirm xorg xorg-xinit openbox rxvt-unicode \
+        git iptables tor
+
+    systemctl enable tor
+    systemctl start tor
 }
 
 xlogin() {
@@ -27,12 +31,54 @@ tor() {
 	VAGRANT
 }
 
+firewall-reset() {
+    iptables -F
+    iptables -X
+    iptables -F -t nat
+    iptables -X -t nat
+
+    iptables -P INPUT ACCEPT
+    iptables -P FORWARD ACCEPT
+    iptables -P OUTPUT ACCEPT
+}
+
+firewall() {
+    iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+    iptables -A INPUT -i lo -j ACCEPT
+
+    iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
+
+    iptables -A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+    # tor-browser starts its own tor daemon, but because the process
+    # doesn't have the tor uid, it gets proxied
+    iptables -t nat -A OUTPUT -p tcp --dport 9051 -j REDIRECT --to-port 9050
+    iptables -A OUTPUT -o lo -p tcp --dport 9050 -j ACCEPT
+    iptables -A OUTPUT -m owner --uid-owner 43 -j ACCEPT
+
+    iptables -P INPUT DROP
+    iptables -P OUTPUT DROP
+    iptables -P FORWARD DROP
+
+    # getent group tor = tor:x:43
+
+    iptables-save > /etc/iptables/iptables.rules
+
+    systemctl enable iptables
+    systemctl start iptables
+}
+
 # setup
+
+firewall-reset
 
 [ -e /root/syu ] || (pacman -Syu --noconfirm && touch /root/syu)
 pacman -Q openbox || packages
 xlogin
 tor
+
+firewall
 
 # init
 
